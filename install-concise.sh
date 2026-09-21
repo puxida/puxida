@@ -14,23 +14,29 @@ pxd_preflight() {
     esac
 }
 
-# Match actual POSIX/FLOCK holders by Linux device major/minor and inode.
-# Never unlink lock files: doing so creates a second independent lock inode.
 pxd_lock_pids() {
-    local f dev ino key p cmd
+    local f dev ino key p cmd pid
     for f in /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock /var/lib/apt/lists/lock /var/lib/rpm/.rpm.lock /usr/lib/sysimage/rpm/.rpm.lock /lib/apk/db/lock; do
         [ -e "$f" ] || continue
-        read -r dev ino < <(stat -Lc '%d %i' "$f")
+        read -r dev ino < <(stat -Lc '%d %i' "$f" 2>/dev/null) || continue
         printf -v key '%02x:%02x:%s' "$(( ((dev >> 8) & 4095) | ((dev >> 32) & 4294963200) ))" "$(( (dev & 255) | ((dev >> 12) & 4294967040) ))" "$ino"
-        awk -v k="$key" '$2 != "->" && $6 == k && $5 > 1 {print $5}' /proc/locks
+        awk -v k="$key" '$2 != "->" && $6 == k && $5 > 1 {print $5}' /proc/locks 2>/dev/null
     done
     for f in /run/yum.pid /run/dnf.pid /var/cache/dnf/metadata_lock.pid; do
         [ -f "$f" ] || continue
         read -r p < "$f"
         case "$p" in ''|*[!0-9]*) continue;; esac
         [ "$p" -gt 1 ] && [ -r "/proc/$p/cmdline" ] || continue
-        IFS= read -r cmd < "/proc/$p/comm" || continue
-        case "$cmd" in yum|dnf|dnf5) echo "$p";; esac
+        echo "$p"
+    done
+    for pid in /proc/[0-9]*; do
+        p=${pid#/proc/}
+        [ -r "$pid/comm" ] || continue
+        IFS= read -r cmd < "$pid/comm" || continue
+        case "$cmd" in
+            apt-get|apt|dpkg|unattended-upgr|apk|dnf|dnf5|yum|zypper|packagekitd)
+                echo "$p";;
+        esac
     done | sort -u
 }
 pxd_is_ancestor() {
@@ -41,7 +47,6 @@ pxd_is_ancestor() {
     done
     return 1
 }
-# Only signal processes that still hold a package lock; never delete lock files.
 pxd_pid_start() {
     local record
     IFS= read -r record < "/proc/$1/stat" || return 1
@@ -56,8 +61,6 @@ pxd_signal_holder() {
     pxd_is_ancestor "$pid" && return 1
     current=$(pxd_pid_start "$pid") || return 1
     [ "$current" = "$stamp" ] || return 1
-    pxd_lock_pids | grep -qx "$pid" || return 1
-    [ "$(pxd_pid_start "$pid")" = "$stamp" ] || return 1
     echo "[pxd] 终止占用软件包锁的进程 PID=$pid，信号=$signal" >&2
     kill -"$signal" "$pid" 2>/dev/null || return 1
     PXD_PACKAGE_INTERRUPTED=1
@@ -71,39 +74,55 @@ pxd_centiseconds() {
 pxd_unlock() {
     local started now holders pid stamp key
     local -A seen=()
-    started=$(pxd_centiseconds) || return 1
+    started=$(pxd_centiseconds) || return 0
     while :; do
         holders=$(pxd_lock_pids | sort -u)
         [ -n "$holders" ] || return 0
-        now=$(pxd_centiseconds) || return 1
-        if [ "$((now - started))" -ge 9000 ]; then
-            pxd_error "90 秒内未能释放软件包锁（PID: $holders）；进程可能处于不可中断状态。"
-            return 1
+        now=$(pxd_centiseconds) || return 0
+        if [ "$((now - started))" -ge 2000 ]; then
+            echo "[pxd] 软件包锁仍被占用（PID: $holders），继续尝试安装" >&2
+            return 0
         fi
         for pid in $holders; do
             stamp=$(pxd_pid_start "$pid") || continue
             key=$pid:$stamp
-            if [ "$((now - started))" -ge 6000 ]; then
+            if [ "$((now - started))" -ge 800 ]; then
                 pxd_signal_holder "$pid" KILL "$stamp" || true
-            elif [ "$((now - started))" -ge 3000 ] && [ -z "${seen[$key]:-}" ]; then
+            elif [ "$((now - started))" -ge 300 ] && [ -z "${seen[$key]:-}" ]; then
                 seen[$key]=1
                 pxd_signal_holder "$pid" TERM "$stamp" || true
             fi
         done
-        sleep 0.1
+        sleep 0.2
     done
+}
+pxd_repair_os() {
+    echo "[pxd] 修复系统未完成的软件包配置" >&2
+    if command -v dpkg >/dev/null 2>&1; then
+        env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending </dev/null 2>/dev/null || true
+        env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=0 -y -f install </dev/null 2>/dev/null || true
+    fi
+    if command -v apk >/dev/null 2>&1; then
+        apk fix --no-cache >/dev/null 2>&1 || true
+    fi
+    if command -v dnf >/dev/null 2>&1; then
+        dnf -y --setopt=timeout=30 check 2>/dev/null || true
+    elif command -v yum >/dev/null 2>&1; then
+        yum -y check 2>/dev/null || true
+    fi
 }
 pxd_pkg_run() {
     local n rc=1
     for n in 1 2 3; do
-        pxd_unlock || return 1
-        if [ "${PXD_PACKAGE_INTERRUPTED:-0}" = 1 ] && command -v dpkg >/dev/null 2>&1; then
-            env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending </dev/null || echo "[pxd] dpkg --configure 有未完成项，忽略并继续安装面板" >&2
+        pxd_unlock || true
+        if [ "${PXD_PACKAGE_INTERRUPTED:-0}" = 1 ]; then
+            pxd_repair_os
             PXD_PACKAGE_INTERRUPTED=0
         fi
         if "$@" </dev/null; then return 0; else rc=$?; fi
         echo "[pxd] Package command failed ($rc), attempt $n/3" >&2
-        [ "$n" -eq 3 ] || sleep 1
+        pxd_repair_os
+        [ "$n" -eq 3 ] || sleep 2
     done
     return "$rc"
 }
@@ -117,9 +136,23 @@ pxd_os() {
         PXD_VERSION=$(. /etc/os-release; echo "$VERSION_ID")
     fi
 }
+pxd_map_pkg() {
+    local p=$1
+    case "$PXD_ID" in
+        alpine)
+            case "$p" in procps-ng) echo procps ;; sqlite3) echo sqlite ;; iproute) echo iproute2 ;; docker.io) echo docker ;; *) echo "$p" ;; esac ;;
+        centos|rocky|almalinux|rhel|ol|fedora)
+            case "$p" in sqlite3) echo sqlite ;; iproute2) echo iproute ;; procps) echo procps-ng ;; docker.io) echo docker ;; *) echo "$p" ;; esac ;;
+        *) echo "$p" ;;
+    esac
+}
 pkg_install() {
     pxd_os
-    local yum_opts=()
+    local yum_opts=() mapped=() x
+    for x in "$@"; do
+        mapped+=("$(pxd_map_pkg "$x")")
+    done
+    set -- "${mapped[@]}"
     if [ "$PXD_ID" = centos ] && [ "${PXD_VERSION%%.*}" = 7 ]; then
         mkdir -p /etc/yum.repos.d
         if [ ! -f /etc/yum.repos.d/pxd-centos7-vault.repo ]; then
@@ -147,14 +180,14 @@ VAULT
         yum_opts=('--disablerepo=*' --enablerepo=pxd-c7-base,pxd-c7-updates,pxd-c7-extras)
     fi
     if command -v apt-get >/dev/null 2>&1; then
-        pxd_pkg_run env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending || true
+        pxd_repair_os
         apt_safe update && apt_safe install -y --no-install-recommends "$@"
+    elif command -v apk >/dev/null 2>&1; then
+        pxd_pkg_run apk add --no-cache "$@"
     elif command -v dnf >/dev/null 2>&1; then
         pxd_pkg_run dnf -y --setopt=timeout=30 install "$@"
     elif command -v yum >/dev/null 2>&1; then
         pxd_pkg_run yum -y --setopt=timeout=30 "${yum_opts[@]}" install "$@"
-    elif command -v apk >/dev/null 2>&1; then
-        pxd_pkg_run apk add --no-cache "$@"
     elif command -v zypper >/dev/null 2>&1; then
         pxd_pkg_run zypper --non-interactive install "$@"
     elif command -v pacman >/dev/null 2>&1; then
@@ -163,7 +196,6 @@ VAULT
         pxd_error 'Unsupported package manager'; return 1
     fi
 }
-
 # Minimal HTTP fallback for the package server when no downloader is installed.
 # HTTPS, redirects and chunked responses remain the job of curl/wget/Python.
 pxd_http_fetch() (
@@ -287,7 +319,7 @@ pxd_presets() {
             *) shift;;
         esac
     done
-    export PANEL_PORT=${PANEL_PORT:-41275}
+    export PANEL_PORT=${PANEL_PORT:-20999}
     export PANEL_USERNAME=${PANEL_USERNAME:-admin}
     export PANEL_PASSWORD=${PANEL_PASSWORD:-12345678}
     [[ "$PANEL_PORT" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$PANEL_PORT" -le 65535 ] || { pxd_error '端口必须为 1 到 65535'; return 1; }
@@ -334,7 +366,7 @@ for f in install.sh 1panel-core 1panel-agent 1pctl; do
 done
 chmod +x install.sh 1panel-core 1panel-agent 1pctl || exit 1
 export PANEL_INSTALL_DOCKER=${PANEL_INSTALL_DOCKER:-y}
-export PANEL_PORT=${PANEL_PORT:-41275}
+export PANEL_PORT=${PANEL_PORT:-20999}
 export PANEL_USERNAME=${PANEL_USERNAME:-admin}
 export PANEL_PASSWORD=${PANEL_PASSWORD:-12345678}
 bash ./install.sh --non-interactive --lang zh --port "$PANEL_PORT" --username "$PANEL_USERNAME" "$@"
