@@ -76,16 +76,16 @@ pxd_unlock() {
         holders=$(pxd_lock_pids | sort -u)
         [ -n "$holders" ] || return 0
         now=$(pxd_centiseconds) || return 1
-        if [ "$((now - started))" -ge 290 ]; then
-            pxd_error "3 秒内未能释放软件包锁（PID: $holders）；进程可能处于不可中断状态。"
+        if [ "$((now - started))" -ge 9000 ]; then
+            pxd_error "90 秒内未能释放软件包锁（PID: $holders）；进程可能处于不可中断状态。"
             return 1
         fi
         for pid in $holders; do
             stamp=$(pxd_pid_start "$pid") || continue
             key=$pid:$stamp
-            if [ "$((now - started))" -ge 180 ]; then
+            if [ "$((now - started))" -ge 6000 ]; then
                 pxd_signal_holder "$pid" KILL "$stamp" || true
-            elif [ -z "${seen[$key]:-}" ]; then
+            elif [ "$((now - started))" -ge 3000 ] && [ -z "${seen[$key]:-}" ]; then
                 seen[$key]=1
                 pxd_signal_holder "$pid" TERM "$stamp" || true
             fi
@@ -98,7 +98,7 @@ pxd_pkg_run() {
     for n in 1 2 3; do
         pxd_unlock || return 1
         if [ "${PXD_PACKAGE_INTERRUPTED:-0}" = 1 ] && command -v dpkg >/dev/null 2>&1; then
-            env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending </dev/null || return 1
+            env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending </dev/null || echo "[pxd] dpkg --configure 有未完成项，忽略并继续安装面板" >&2
             PXD_PACKAGE_INTERRUPTED=0
         fi
         if "$@" </dev/null; then return 0; else rc=$?; fi
@@ -147,7 +147,7 @@ VAULT
         yum_opts=('--disablerepo=*' --enablerepo=pxd-c7-base,pxd-c7-updates,pxd-c7-extras)
     fi
     if command -v apt-get >/dev/null 2>&1; then
-        pxd_pkg_run env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending &&
+        pxd_pkg_run env DEBIAN_FRONTEND=noninteractive dpkg --configure --pending || true
         apt_safe update && apt_safe install -y --no-install-recommends "$@"
     elif command -v dnf >/dev/null 2>&1; then
         pxd_pkg_run dnf -y --setopt=timeout=30 install "$@"
