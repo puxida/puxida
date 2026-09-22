@@ -1,12 +1,10 @@
 # 普希达一键安装
 
-仓库只放安装脚本。完整版 / 精简版二进制包超过 GitHub 普通文件 100MB 限制，必须作为 **Release 附件** 上传，不要 `git add *.tar.gz`。
+没有 curl 时先复制执行（Debian / Ubuntu / CentOS / Rocky / Alma / Fedora / Alpine）：
 
-当前发行版：**v20260922**（由最新源码重新编译面板与安装包）。
-
-安装脚本会在 AlmaLinux / Alpine / CentOS / Debian / Fedora / Rocky Linux / Ubuntu 上自动结束占用软件包锁的进程、补装缺失依赖，并在没有 systemd 时直接拉起面板进程。不会主动开启未运行的防火墙，以免把 SSH 22 端口挡掉。
-
-## 其它服务器一键安装（x86_64 Linux，root）
+```bash
+command -v curl >/dev/null 2>&1 || { apt-get update && apt-get install -y curl; } || yum install -y curl || dnf install -y curl || apk add --no-cache curl
+```
 
 完整版（主控，默认端口 **41275**）：
 
@@ -17,13 +15,6 @@ curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install
 精简版（子节点，默认端口 **20999**）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-concise.sh | bash
-```
-
-Alpine 若还没有 bash / curl：
-
-```bash
-apk add --no-cache bash curl
 curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-concise.sh | bash
 ```
 
@@ -42,6 +33,10 @@ curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install
 curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-concise.sh | \
   bash -s -- --port 端口 --username 账号 --password 密码
 ```
+
+仓库只放安装脚本。完整版 / 精简版二进制包超过 GitHub 普通文件 100MB 限制，必须作为 **Release 附件** 上传。当前发行版：**v20260922**。
+
+安装脚本会在 AlmaLinux / Alpine / CentOS / Debian / Fedora / Rocky Linux / Ubuntu 上自动结束占用软件包锁的进程、补装缺失依赖，并在没有 systemd 时直接拉起面板进程。不会主动开启未运行的防火墙，以免把 SSH 22 端口挡掉。
 
 环境变量（可选）：
 
