@@ -29,9 +29,18 @@ curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install
 
 指定端口和账号（不要用默认弱口令）：
 
+完整版：
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-full.sh | \
-  bash -s -- --port 41275 --username admin --password '你的强密码'
+  bash -s -- --port 端口 --username 账号 --password 密码
+```
+
+精简版：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-concise.sh | \
+  bash -s -- --port 端口 --username 账号 --password 密码
 ```
 
 环境变量（可选）：
