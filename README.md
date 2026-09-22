@@ -53,13 +53,6 @@ curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install
 - `pxd-full-father.tar.gz`
 - `pxd-concise-son.tar.gz`
 
-本机 80 端口分发（与面板「安装受控端」同一套包）：
-
-```bash
-curl -fsSL http://204.194.52.45/install-full-father | bash
-curl -fsSL http://204.194.52.45/install-concise-son | bash
-```
-
 ## v20260922 面板更新
 
 - 顶栏菜单在窄屏下折行，各页面主内容区随导航高度让位
@@ -68,21 +61,3 @@ curl -fsSL http://204.194.52.45/install-concise-son | bash
 - 带 RouterButton 的导航条使用白底
 - 受控端子面板顶距收紧；安装受控端走精简版一键安装（`/dev/tcp` 拉 bootstrap）
 
-## 发布新版本（本机构建机上）
-
-1. 只推送脚本到 `main`（本目录这几个文件）。
-2. 创建或覆盖 Release 附件，把 `/opt` 里两个 tar 当附件上传。
-
-```bash
-cd /root/copy_code/puxida-github
-git add README.md LICENSE .gitignore install-full.sh install-concise.sh
-git commit -m "Release v20260922 one-click packages"
-git push origin main
-
-gh release create v20260922 \
-  /opt/pxd_full_father/pxd-full-father.tar.gz \
-  /opt/pxd_concise_son/pxd-concise-son.tar.gz \
-  --repo y648394245-tech/puxida \
-  --title "v20260922" \
-  --notes "最新源码一键安装包（完整版 + 精简版）"
-```
