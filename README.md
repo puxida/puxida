@@ -9,13 +9,13 @@ command -v curl >/dev/null 2>&1 || { apt-get update && apt-get install -y curl; 
 完整版（主控，默认端口 **41275**）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-full.sh | bash
+curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-full.sh | bash
 ```
 
 精简版（子节点，默认端口 **20999**）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-concise.sh | bash
+curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.sh | bash
 ```
 
 指定端口和账号（不要用默认弱口令）：
@@ -23,14 +23,14 @@ curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install
 完整版：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-full.sh | \
+curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-full.sh | \
   bash -s -- --port 端口 --username 账号 --password 密码
 ```
 
 精简版：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/y648394245-tech/puxida/main/install-concise.sh | \
+curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.sh | \
   bash -s -- --port 端口 --username 账号 --password 密码
 ```
 

@@ -328,7 +328,7 @@ pxd_presets() {
 }
 pxd_presets "$@" || exit 1
 
-REPO=${PXD_REPO:-y648394245-tech/puxida}
+REPO=${PXD_REPO:-puxida/puxida}
 RELEASE_TAG=${PXD_RELEASE_TAG:-latest}
 if [ "$RELEASE_TAG" = latest ]; then
     PKG_URL=${PXD_PACKAGE_URL:-https://github.com/${REPO}/releases/latest/download/pxd-full-father.tar.gz}
