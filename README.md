@@ -6,13 +6,13 @@
 command -v curl >/dev/null 2>&1 || { apt-get update && apt-get install -y curl; } || yum install -y curl || dnf install -y curl || apk add --no-cache curl
 ```
 
-完整版（主控，安装时**手动输入**端口、账号、密码；端口回车默认 41275）：
+完整版：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-full.sh | bash
 ```
 
-精简版（子节点，安装时**手动输入**端口、账号、密码；端口回车默认 20999）：
+精简版：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.sh | bash
