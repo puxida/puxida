@@ -278,11 +278,20 @@ for arg in "$@"; do
     esac
 done
 pxd_preflight || exit 1
-if [ "${PXD_INTERACTIVE:-0}" = 1 ]; then
-    [ -r /dev/tty ] && [ -w /dev/tty ] || { pxd_error '交互安装需要 SSH 终端'; exit 1; }
+pxd_has_cli_creds() {
+    local a
+    for a in "$@"; do
+        case "$a" in --port|--username|--password) return 0;; esac
+    done
+    return 1
+}
+pxd_prompt_creds() {
+    local default_port=$1
+    [ -r /dev/tty ] && [ -w /dev/tty ] || { pxd_error '请在 SSH 终端执行以输入端口/账号/密码，或使用 --port --username --password 全自动安装'; return 1; }
+    echo '请输入面板端口、账号和密码（直接回车则端口/账号用默认值，密码必须手动输入）。' >/dev/tty
     while :; do
-        read -r -p '设置面板端口 [默认 20999]: ' PANEL_PORT </dev/tty || exit 1
-        PANEL_PORT=${PANEL_PORT:-20999}
+        read -r -p "设置面板端口 [默认 ${default_port}]: " PANEL_PORT </dev/tty || exit 1
+        PANEL_PORT=${PANEL_PORT:-$default_port}
         [[ "$PANEL_PORT" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$PANEL_PORT" -le 65535 ] && break
         echo '端口必须为 1 到 65535。' >/dev/tty
     done
@@ -303,6 +312,13 @@ if [ "${PXD_INTERACTIVE:-0}" = 1 ]; then
     done
     unset pxd_password_confirm
     export PANEL_PORT PANEL_USERNAME PANEL_PASSWORD
+}
+if pxd_has_cli_creds "$@"; then
+    :
+elif [ -n "${PANEL_PORT:-}" ] && [ -n "${PANEL_USERNAME:-}" ] && [ -n "${PANEL_PASSWORD:-}" ]; then
+    :
+else
+    pxd_prompt_creds 20999 || exit 1
 fi
 # Validate all presets before downloading or changing system packages.
 pxd_presets() {
@@ -321,7 +337,7 @@ pxd_presets() {
     done
     export PANEL_PORT=${PANEL_PORT:-20999}
     export PANEL_USERNAME=${PANEL_USERNAME:-admin}
-    export PANEL_PASSWORD=${PANEL_PASSWORD:-12345678}
+    export PANEL_PASSWORD=${PANEL_PASSWORD:-}
     [[ "$PANEL_PORT" =~ ^[1-9][0-9]{0,4}$ ]] && [ "$PANEL_PORT" -le 65535 ] || { pxd_error '端口必须为 1 到 65535'; return 1; }
     [[ "$PANEL_USERNAME" =~ ^[a-zA-Z0-9_]{3,30}$ ]] || { pxd_error '账号必须为 3 到 30 位字母、数字或下划线'; return 1; }
     [[ "$PANEL_PASSWORD" =~ ^[a-zA-Z0-9_!@#$%*,.?]{8,30}$ ]] || { pxd_error '密码必须为 8 到 30 位字母、数字或 _!@#$%*,.?'; return 1; }
@@ -368,7 +384,7 @@ chmod +x install.sh 1panel-core 1panel-agent 1pctl || exit 1
 export PANEL_INSTALL_DOCKER=${PANEL_INSTALL_DOCKER:-y}
 export PANEL_PORT=${PANEL_PORT:-20999}
 export PANEL_USERNAME=${PANEL_USERNAME:-admin}
-export PANEL_PASSWORD=${PANEL_PASSWORD:-12345678}
+export PANEL_PASSWORD=${PANEL_PASSWORD}
 bash ./install.sh --non-interactive --lang zh --port "$PANEL_PORT" --username "$PANEL_USERNAME" "$@"
 rc=$?
 if [ "$rc" -eq 0 ]; then

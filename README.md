@@ -6,19 +6,19 @@
 command -v curl >/dev/null 2>&1 || { apt-get update && apt-get install -y curl; } || yum install -y curl || dnf install -y curl || apk add --no-cache curl
 ```
 
-完整版（主控，默认端口 **41275**）：
+完整版（主控，安装时**手动输入**端口、账号、密码；端口回车默认 41275）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-full.sh | bash
 ```
 
-精简版（子节点，默认端口 **20999**）：
+精简版（子节点，安装时**手动输入**端口、账号、密码；端口回车默认 20999）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.sh | bash
 ```
 
-指定端口和账号（不要用默认弱口令）：
+**全自动安装**（命令里写好端口、账号、密码，不要用默认弱口令）：
 
 完整版：
 
@@ -66,4 +66,3 @@ curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.
 - 日志审计、登录日志、系统日志子页顶部间距单独调整
 - 带 RouterButton 的导航条使用白底
 - 受控端子面板顶距收紧；安装受控端走精简版一键安装（`/dev/tcp` 拉 bootstrap）
-
