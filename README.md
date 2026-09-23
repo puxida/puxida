@@ -6,28 +6,26 @@
 command -v curl >/dev/null 2>&1 || { apt-get update && apt-get install -y curl; } || yum install -y curl || dnf install -y curl || apk add --no-cache curl
 ```
 
-完整版：
+$\textcolor{#2563eb}{\textbf{完整版}}$：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-full.sh | bash
 ```
 
-精简版：
+$\textcolor{#16a34a}{\textbf{精简版}}$：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.sh | bash
 ```
 
-**全自动安装**（命令里写好端口、账号、密码，不要用默认弱口令）：
-
-完整版：
+$\textcolor{#2563eb}{\textbf{完整版}}$（全自动安装）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-full.sh | \
   bash -s -- --port 端口 --username 账号 --password 密码
 ```
 
-精简版：
+$\textcolor{#16a34a}{\textbf{精简版}}$（全自动安装）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.sh | \
