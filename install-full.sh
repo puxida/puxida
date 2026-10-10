@@ -179,9 +179,17 @@ VAULT
         fi
         yum_opts=('--disablerepo=*' --enablerepo=pxd-c7-base,pxd-c7-updates,pxd-c7-extras)
     fi
+    if [ "$PXD_ID" = centos ] && [ "${PXD_VERSION%%.*}" = 8 ]; then
+        # mirrorlist.centos.org 已停止解析，CentOS 8 / Stream 8 改走 vault。
+        sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo 2>/dev/null || true
+    fi
     if command -v apt-get >/dev/null 2>&1; then
         pxd_repair_os
-        apt_safe update && apt_safe install -y --no-install-recommends "$@"
+        if ! { apt_safe update && apt_safe install -y --no-install-recommends "$@"; }; then
+            # Debian 11 安全源索引有时指向已删除的 deb，去掉该源后再装。
+            sed -i '/debian-security/s/^deb /# deb /' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true
+            apt_safe update && apt_safe install -y --no-install-recommends "$@"
+        fi
     elif command -v apk >/dev/null 2>&1; then
         pxd_pkg_run apk add --no-cache "$@"
     elif command -v dnf >/dev/null 2>&1; then
