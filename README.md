@@ -3,18 +3,7 @@
 没有 curl 或 bash 时先复制执行（Debian / Ubuntu / CentOS / Rocky / Alma / Fedora / Alpine）：
 
 ```bash
-if ! command -v bash >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
-  if command -v apk >/dev/null 2>&1; then
-    apk add --no-cache bash curl ca-certificates
-  elif command -v apt-get >/dev/null 2>&1; then
-    apt-get update && apt-get install -y bash curl ca-certificates \
-      || { sed -i '/debian-security/s/^deb /# deb /' /etc/apt/sources.list; apt-get update && apt-get install -y bash curl ca-certificates; }
-  elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y bash curl
-  elif command -v yum >/dev/null 2>&1; then
-    yum install -y bash curl
-  fi
-fi
+if ! command -v bash >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then if command -v apk >/dev/null 2>&1; then apk add --no-cache bash curl ca-certificates; elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y bash curl ca-certificates || { sed -i '/debian-security/s/^deb /# deb /' /etc/apt/sources.list; apt-get update && apt-get install -y bash curl ca-certificates; }; elif command -v dnf >/dev/null 2>&1; then dnf install -y bash curl; elif command -v yum >/dev/null 2>&1; then yum install -y bash curl; fi; fi
 ```
 
 $\textcolor{#2563eb}{\textbf{完整版}}$：
