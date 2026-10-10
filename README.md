@@ -65,6 +65,7 @@ curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.
 ## v20261009 面板更新
 
 - 节点管理「在新窗口打开」第一次即可自动登录并进入子面板
+- CentOS 8 / Stream 8 改用归档源；Debian 11 安全源 404 时仍能装上依赖；Alpine 安装前补齐 bash
 
 ## v20260923 面板更新
 
