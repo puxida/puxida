@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.
   bash -s -- --port 端口 --username 账号 --password 密码
 ```
 
-仓库只放安装脚本。完整版 / 精简版二进制包超过 GitHub 普通文件 100MB 限制，必须作为 **Release 附件** 上传。当前发行版：**v20261009**。
+仓库只放安装脚本。完整版 / 精简版二进制包超过 GitHub 普通文件 100MB 限制，必须作为 **Release 附件** 上传。当前发行版：**v20261120**。
 
 安装脚本会在 AlmaLinux / Alpine / CentOS / Debian / Fedora / Rocky Linux / Ubuntu 上自动结束占用软件包锁的进程、补装缺失依赖，并在没有 systemd 时直接拉起面板进程。不会主动开启未运行的防火墙，以免把 SSH 22 端口挡掉。
 
@@ -50,6 +50,11 @@ curl -fsSL https://raw.githubusercontent.com/puxida/puxida/main/install-concise.
 
 - `pxd-full-father.tar.gz`
 - `pxd-concise-son.tar.gz`
+
+## v20261120 面板更新
+
+- 安装受控端改为使用当前主控 IP（回退 `194.124.219.149`），不再写死已下线的 `204.194.52.45`
+- 服务器迁移后，节点管理里「安装受控端」能重新拉到安装脚本
 
 ## v20261009 面板更新
 
